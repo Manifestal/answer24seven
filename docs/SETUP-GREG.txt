@@ -1,0 +1,101 @@
+ANSWER24SEVEN — MANUAL SETUP SHEET
+==================================
+
+What this repository contains
+-----------------------------
+- Vapi assistant export: vapi/assistant.json (GPT-4o-mini, Vapi Elliot voice, Deepgram Nova)
+- Config template: vapi/assistant.template.js (change BUSINESS_NAME on its first line to clone)
+- Vercel webhook: /api/vapi/end-of-call
+- Password-protected calls dashboard: /
+- Supabase schema: supabase/migrations/001_create_calls.sql
+
+IMPORTANT: Greg must do the provider/account/number actions below. The assistant, telephone number, forwarding, Supabase project, and live call have NOT been created or verified by this code build. The Google Voice number must only be forwarded; do not port it.
+
+1. Supabase storage (required before calls can be saved)
+--------------------------------------------------------
+1. Create or choose Greg's Supabase project (not created by this repository).
+2. In Supabase SQL Editor, run supabase/migrations/001_create_calls.sql.
+3. In Project Settings → API, copy the project URL and the service_role key.
+4. In Vercel → answer24seven → Settings → Environment Variables, add:
+   SUPABASE_URL = the project URL
+   SUPABASE_SERVICE_ROLE_KEY = service_role key (sensitive; server-side only)
+   DASHBOARD_PASSWORD = a long unique password
+   VAPI_WEBHOOK_SECRET = a long random secret (recommended)
+   Apply all to Production and Preview as appropriate, then redeploy.
+5. If DASHBOARD_PASSWORD is missing, the dashboard is locked and its calls API
+   returns 401. Do not remove that gate to make the page public.
+6. This repository has no email provider configured. Call summaries are stored
+   in Recent calls and are flagged as dashboard-only; no email has been sent.
+   Add an email integration only after selecting and configuring a real provider.
+
+2. Vapi account and assistant (Greg does this)
+----------------------------------------------
+1. Create/sign into a free account at https://vapi.ai. Do not select a paid plan.
+   Review the account's current free-credit balance before testing.
+2. In Vapi dashboard, go to Assistants → Import (or create an assistant and use
+   the supplied config). Import vapi/assistant.json after replacing
+   YOUR_VERCEL_DEPLOYMENT_URL with the exact deployed URL (no trailing slash).
+   If importing assistant.json, set server.url to:
+   https://YOUR_DEPLOYMENT_HOST/api/vapi/end-of-call
+3. Confirm model is OpenAI GPT-4o-mini, voice provider Vapi and voiceId Elliot,
+   voice version 2, transcriber Deepgram Nova (nova-2), and first message is the
+   exact opening line in the assistant JSON. The Vapi voice documentation lists
+   Elliot as an active Vapi voice (not an ElevenLabs voice ID).
+4. Set the assistant webhook URL to the deployed endpoint and select the
+   end-of-call-report server event. If using VAPI_WEBHOOK_SECRET, configure a
+   Bearer Token credential with header name X-Vapi-Secret and no Bearer prefix,
+   then attach it to the assistant's server configuration. The configured
+   secret must match the Vercel environment variable exactly.
+5. Do not publish or test the Google Voice demo line until the webhook is
+   deployed and the Supabase schema and Vercel env vars are in place.
+
+3. Twilio number and Vapi connection (Greg does this)
+-----------------------------------------------------
+1. Create/sign into Greg's Twilio account.
+2. Buy a US local phone number (Twilio's current price varies; verify in the
+   console before purchasing; do not treat the brief's estimate as a quote).
+3. In Vapi, open Phone Numbers → Import Twilio Number (or the current equivalent)
+   and provide the Twilio Account SID, Auth Token, and number in the Vapi UI.
+   Keep those credentials out of this repository and out of chat.
+4. Assign the imported Twilio number to the Answer24Seven AI Receptionist
+   assistant in Vapi's Phone Numbers page. Confirm the number's inbound call
+   configuration points to that assistant.
+
+4. Google Voice forwarding ONLY (Greg does this)
+------------------------------------------------
+1. Sign into Google Voice using gregnpaj@gmail.com.
+2. Open Settings → Linked numbers → Add a linked number.
+3. Enter the new Twilio number and complete Google's verification call/code.
+   Answer the verification call through Vapi's test mode if supported, or enter
+   the code Google provides as instructed.
+4. Configure calls to (937) 839-8225 to forward to the Twilio number. Verify
+   forwarding with a controlled test call.
+5. Do not port the Google Voice number. Do not change DNS or the live WordPress
+   site. Forwarding is reversible by removing the linked number.
+
+5. Required real-call test (do not claim success before this)
+-------------------------------------------------------------
+1. From a mobile, call (937) 839-8225 and confirm the agent says exactly:
+   “Hi, thanks for calling Answer24Seven. I'm an AI receptionist — did you know
+   I was a robot?”
+2. Test a roofer lead: give a test name/business, ask for tomorrow at 10 AM,
+   and confirm the agent repeats the details correctly.
+3. End the call. Verify the real call appears in the protected Recent calls
+   dashboard with caller number/name/business, need, demo time, duration and
+   full transcript. Do not insert fake rows. Mark tests using the Vapi call
+   metadata isTest=true if doing so through a Vapi/API test flow; the dashboard
+   displays that marker when provided.
+4. Verify the stored lead summary. Email is NOT set up by this starter; the
+   owner summary is dashboard-only until a provider is wired in.
+5. Record the real transcript and dashboard URL/screenshot. Report any failure.
+   Until the test call passes, the public demo line is unverified/not live.
+
+COST / SAFETY NOTES
+-------------------
+- The brief's target of $0.08–$0.13/minute is not verified by this config. Vapi,
+  model, speech, and telephony rates change; check live pricing/call cost logs.
+  A three-minute call may exceed $0.30. No spend guarantee is made here.
+- Do not enter card/payment information during the call. No Stripe or billing
+  code is included. The demo line has no card requirement in this build.
+- Keep Vapi, Twilio, Supabase service_role, and webhook secrets in provider
+  dashboards or Vercel environment variables only; never commit them.
